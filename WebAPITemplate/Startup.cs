@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Cors.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,10 +36,20 @@ namespace WebAPITemplate
         {
             // Add framework services.
             services.AddMvc();
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowSpecificOrigin",
+                    builder => builder.WithOrigins("http://localhost:4200"));
+            });
+
+            services.Configure<MvcOptions>(options =>
+            {
+                options.Filters.Add(new CorsAuthorizationFilterFactory("AllowSpecificOrigin"));
+            });
 
             var connection = "Server=tcp:sschindi.database.windows.net,1433;Initial Catalog=TemplateDB;Persist Security Info=False;User ID=Sandro;Password=4562Biberist;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
 
-                services.AddDbContext<TemplateContext>(options => options.UseSqlServer(connection));
+            services.AddDbContext<TemplateContext>(options => options.UseSqlServer(connection));
             services.AddScoped<ITemplateRepository, TemplateRepository>();
         }
 
@@ -47,7 +59,11 @@ namespace WebAPITemplate
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 
-            app.UseMvc();
+            app.UseMvc(routes =>
+            {
+               routes.MapRoute("auth", "{controller=Auth}/{action=DoLogin}");
+            });
+
             AutoMapper.Mapper.Initialize(cfg =>
             {
                 cfg.CreateMap<User, UserDto>();
